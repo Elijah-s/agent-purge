@@ -347,6 +347,26 @@ await t("--layer 被识别且不传给 pi，--ask= 会被识别", () => {
 	assert.match(e.stdout, /--system-prompt/);
 });
 
+console.log("persona 选择口径");
+await t("同分时 resolve 认 active，不按 id 字母序（`ls` 的「最匹配」要和真正注入的一致）", () => {
+	const s = createStore(DATA);
+	s.save("aa", { meta: { name: "AA", harness: ["*"], model: ["*"] }, body: "AA 正文" });
+	s.save("bb", { meta: { name: "BB", harness: ["*"], model: ["*"] }, body: "BB 正文" });
+	s.setActive("bb");
+	const r = s.resolve({ harness: "pi", model: null });
+	assert.equal(r.persona.id, "bb", "active 是 bb，同分却挑了别的");
+	assert.equal(r.matched, true);
+});
+
+await t("显式 harness 命中仍然压过 active", () => {
+	const s = createStore(DATA);
+	s.save("cc", { meta: { name: "CC", harness: ["codex"], model: ["*"] }, body: "CC 正文" });
+	s.setActive("bb");
+	const r = s.resolve({ harness: "codex", model: null });
+	assert.equal(r.persona.id, "cc", "显式 harness 该赢");
+	assert.equal(r.score, 2);
+});
+
 console.log(fails.length ? `\n✗ ${fails.length} 失败，${pass} 通过` : `\n✓ 全部通过：${pass} 通过，0 失败`);
 for (const f of fails) console.error(" - " + f);
 process.env = saved;
